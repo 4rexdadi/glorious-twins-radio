@@ -1,96 +1,62 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useMedia } from "@/context/MediaContext";
+import { useEffect, useState } from "react";
 
-interface ResponsivePlayerProps {
-  nowPlaying: string;
-  streamUrl: string;
-  isLiveError?: boolean;
-}
+const UnifiedPlayer: React.FC = () => {
+  const {
+    currentMedia,
+    isPlaying,
+    isLoading,
+    volume,
+    currentTime,
+    duration,
+    togglePlayPause,
+    setVolume: setMediaVolume,
+    stop,
+  } = useMedia();
 
-const ResponsivePlayer: React.FC<ResponsivePlayerProps> = ({
-  nowPlaying,
-  streamUrl,
-  isLiveError = false,
-}) => {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(0.8);
-  const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isVisible, setIsVisible] = useState(true); // Changed: Show player immediately
+  const [isVisible, setIsVisible] = useState(false);
 
+  // Show player when media is loaded
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const handleLoadStart = () => setIsLoading(true);
-    const handleCanPlay = () => setIsLoading(false);
-    const handlePlay = () => {
-      setIsPlaying(true);
-      // Removed setIsVisible(true) since it's already visible
-    };
-    const handlePause = () => setIsPlaying(false);
-
-    audio.addEventListener("loadstart", handleLoadStart);
-    audio.addEventListener("canplay", handleCanPlay);
-    audio.addEventListener("play", handlePlay);
-    audio.addEventListener("pause", handlePause);
-    audio.volume = volume;
-
-    return () => {
-      audio.removeEventListener("loadstart", handleLoadStart);
-      audio.removeEventListener("canplay", handleCanPlay);
-      audio.removeEventListener("play", handlePlay);
-      audio.removeEventListener("pause", handlePause);
-    };
-  }, [volume]);
-
-  const togglePlayPause = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (isPlaying) {
-      audio.pause();
-    } else {
-      audio.play();
+    if (currentMedia) {
+      setIsVisible(true);
     }
-  };
+  }, [currentMedia]);
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
-    setVolume(newVolume);
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume;
-    }
+    setMediaVolume(newVolume);
   };
 
   const toggleMute = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
     if (volume > 0) {
-      setVolume(0);
-      audio.volume = 0;
+      setMediaVolume(0);
     } else {
-      setVolume(0.8);
-      audio.volume = 0.8;
+      setMediaVolume(0.8);
     }
   };
 
   const closePlayer = () => {
     setIsVisible(false);
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
+    stop();
   };
 
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
   };
 
-  // Don't render if not visible
-  if (!isVisible) return null;
+  const formatTime = (time: number) => {
+    if (isNaN(time)) return "0:00";
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
+  // Don't render if not visible or no media
+  if (!isVisible || !currentMedia) return null;
 
   // Icon Components
   const PlayIcon = () => (
@@ -193,33 +159,66 @@ const ResponsivePlayer: React.FC<ResponsivePlayerProps> = ({
     </svg>
   );
 
+  const getMediaIcon = () => {
+    if (currentMedia.type === "live") {
+      return (
+        <svg
+          className="w-4 h-4 text-white"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
+          <path d="M18 3a1 1 0 00-1.447-.894L8.763 6H5a3 3 0 000 6h.28l1.771 5.316A1 1 0 008 18h1a1 1 0 001-1v-4.382l6.553 3.276A1 1 0 0018 15V3z" />
+        </svg>
+      );
+    }
+    return (
+      <svg
+        className="w-4 h-4 text-white"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+        />
+      </svg>
+    );
+  };
+
+  const getMediaLabel = () => {
+    if (currentMedia.type === "live") return "LIVE";
+    if (currentMedia.episodeNumber) {
+      return `EP ${currentMedia.episodeNumber}`;
+    }
+    return "PODCAST";
+  };
+
   return (
     <>
       {/* Mobile Player - Full Width Bottom */}
       <div className="fixed bottom-0 left-0 right-0 md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 z-50 shadow-lg transition-all duration-300 ease-in-out">
         {/* Collapsed State */}
         <div className="flex items-center gap-3 px-4 py-3">
-          {/* Live Indicator & Info */}
+          {/* Media Indicator & Info */}
           <div
             className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
             onClick={toggleExpanded}
           >
             <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center flex-shrink-0">
-              <svg
-                className="w-4 h-4 text-white"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path d="M18 3a1 1 0 00-1.447-.894L8.763 6H5a3 3 0 000 6h.28l1.771 5.316A1 1 0 008 18h1a1 1 0 001-1v-4.382l6.553 3.276A1 1 0 0018 15V3z" />
-              </svg>
+              {getMediaIcon()}
             </div>
 
             <div className="flex-1 min-w-0">
               <div className="text-xs text-gray-500 dark:text-gray-400">
-                Now Playing
+                {currentMedia.type === "live"
+                  ? "Now Playing"
+                  : "Playing Podcast"}
               </div>
               <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                {nowPlaying || "GloriousTwins Radio"}
+                {currentMedia.title}
               </div>
             </div>
           </div>
@@ -241,7 +240,7 @@ const ResponsivePlayer: React.FC<ResponsivePlayerProps> = ({
             </button>
 
             <button
-              title="Control"
+              title="Expand"
               type="button"
               onClick={toggleExpanded}
               className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-400"
@@ -263,6 +262,26 @@ const ResponsivePlayer: React.FC<ResponsivePlayerProps> = ({
         {/* Expanded State */}
         {isExpanded && (
           <div className="px-4 pb-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 animate-in slide-in-from-bottom duration-300">
+            {/* Progress Bar for Podcasts */}
+            {currentMedia.type === "podcast" && duration > 0 && (
+              <div className="flex items-center gap-2 py-3 border-b border-gray-200 dark:border-gray-700">
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-mono min-w-[40px]">
+                  {formatTime(currentTime)}
+                </span>
+                <div className="flex-1 h-1 bg-gray-300 dark:bg-gray-700 rounded-full">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-200"
+                    style={{
+                      width: `${(currentTime / duration) * 100}%`,
+                    }}
+                  />
+                </div>
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-mono min-w-[40px]">
+                  {formatTime(duration)}
+                </span>
+              </div>
+            )}
+
             {/* Volume Control */}
             <div className="flex items-center gap-3 py-3">
               <button
@@ -290,21 +309,13 @@ const ResponsivePlayer: React.FC<ResponsivePlayerProps> = ({
 
             {/* Additional Info */}
             <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-              <span>000.0FM • Ibadan</span>
-              <button
-                onClick={() => navigator.clipboard.writeText(streamUrl)}
-                className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors underline"
-              >
-                Copy URL
-              </button>
+              <span className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 font-medium">
+                {getMediaLabel()}
+              </span>
+              {currentMedia.duration && currentMedia.type === "podcast" && (
+                <span>{currentMedia.duration}</span>
+              )}
             </div>
-
-            {/* Error Message */}
-            {isLiveError && (
-              <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">
-                Stream info unavailable
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -321,16 +332,10 @@ const ResponsivePlayer: React.FC<ResponsivePlayerProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded bg-emerald-500 flex items-center justify-center">
-                    <svg
-                      className="w-3 h-3 text-white"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M18 3a1 1 0 00-1.447-.894L8.763 6H5a3 3 0 000 6h.28l1.771 5.316A1 1 0 008 18h1a1 1 0 001-1v-4.382l6.553 3.276A1 1 0 0018 15V3z" />
-                    </svg>
+                    {getMediaIcon()}
                   </div>
                   <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                    GT Radio
+                    {currentMedia.type === "live" ? "GT Radio" : "Podcast"}
                   </span>
                 </div>
 
@@ -397,19 +402,15 @@ const ResponsivePlayer: React.FC<ResponsivePlayerProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded bg-emerald-500 flex items-center justify-center">
-                      <svg
-                        className="w-3 h-3 text-white"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M18 3a1 1 0 00-1.447-.894L8.763 6H5a3 3 0 000 6h.28l1.771 5.316A1 1 0 008 18h1a1 1 0 001-1v-4.382l6.553 3.276A1 1 0 0018 15V3z" />
-                      </svg>
+                      {getMediaIcon()}
                     </div>
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                      GT Radio
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                      {currentMedia.type === "live"
+                        ? "GT Radio"
+                        : currentMedia.title}
                     </span>
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
-                      LIVE
+                      {getMediaLabel()}
                     </span>
                   </div>
 
@@ -439,12 +440,36 @@ const ResponsivePlayer: React.FC<ResponsivePlayerProps> = ({
                 {/* Now Playing */}
                 <div className="mb-4">
                   <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                    Now Playing
+                    {currentMedia.type === "live"
+                      ? "Now Playing"
+                      : "Playing Podcast"}
                   </div>
                   <div className="text-sm font-medium text-gray-900 dark:text-white">
-                    {nowPlaying || "GloriousTwins Radio"}
+                    {currentMedia.title}
                   </div>
                 </div>
+
+                {/* Progress Bar for Podcasts */}
+                {currentMedia.type === "podcast" && duration > 0 && (
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                        {formatTime(currentTime)}
+                      </span>
+                      <div className="flex-1 h-1 bg-gray-300 dark:bg-gray-700 rounded-full">
+                        <div
+                          className="h-full bg-emerald-500 rounded-full transition-all duration-200"
+                          style={{
+                            width: `${(currentTime / duration) * 100}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                        {formatTime(duration)}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Controls */}
                 <div className="flex items-center justify-between mb-4">
@@ -485,34 +510,20 @@ const ResponsivePlayer: React.FC<ResponsivePlayerProps> = ({
                     />
                   </div>
                 </div>
-
-                {/* Error Message */}
-                {isLiveError && (
-                  <div className="mb-3 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">
-                    Stream info unavailable
-                  </div>
-                )}
               </div>
 
               {/* Footer */}
-              <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                  <span>000.0FM • Ibadan</span>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(streamUrl)}
-                    className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors underline"
-                  >
-                    Copy URL
-                  </button>
+              {currentMedia.duration && (
+                <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span>Duration: {currentMedia.duration}</span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>
       </div>
-
-      {/* Hidden Audio Element */}
-      <audio ref={audioRef} src={streamUrl} preload="none" />
 
       <style jsx>{`
         .slider::-webkit-slider-thumb {
@@ -543,4 +554,4 @@ const ResponsivePlayer: React.FC<ResponsivePlayerProps> = ({
   );
 };
 
-export default ResponsivePlayer;
+export default UnifiedPlayer;

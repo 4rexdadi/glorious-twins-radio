@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import Logo from "./Logo";
 import MobileMenu from "./MobileMenu";
 import ThemeToggle from "./ThemeToggle";
@@ -11,13 +11,15 @@ interface NavigationProps {
   onListenLive: () => void;
   menuOpen: boolean;
   onToggleMenu: () => void;
+  onToggleContact: () => void;
 }
 
 const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/schedule", label: "Schedule" },
-  { href: "/podcast", label: "Podcast" },
-  { href: "/about", label: "About" },
+  { id: "home", label: "Home" },
+  { id: "about", label: "About" },
+  { id: "schedule", label: "Schedule" },
+  { id: "podcasts", label: "Podcast" },
+  { id: "news", label: "News" },
 ];
 
 const Navigation: React.FC<NavigationProps> = ({
@@ -26,7 +28,50 @@ const Navigation: React.FC<NavigationProps> = ({
   onListenLive,
   menuOpen,
   onToggleMenu,
+  onToggleContact,
 }) => {
+  const [activeSection, setActiveSection] = useState("home");
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const sections = navItems.map((item) => item.id);
+      const scrollPosition = window.scrollY + 100; // Offset for fixed header
+
+      for (const sectionId of sections) {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          const { offsetTop, offsetHeight } = element;
+          if (
+            scrollPosition >= offsetTop &&
+            scrollPosition < offsetTop + offsetHeight
+          ) {
+            setActiveSection(sectionId);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    handleScroll(); // Check initial position
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const offsetTop = element.offsetTop - 64; // Account for fixed header height
+      window.scrollTo({
+        top: offsetTop,
+        behavior: "smooth",
+      });
+    }
+    if (menuOpen) {
+      onToggleMenu();
+    }
+  };
+
   return (
     <>
       <nav className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200/20 dark:border-gray-700/20 fixed top-0 left-0 right-0 z-50">
@@ -45,13 +90,20 @@ const Navigation: React.FC<NavigationProps> = ({
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-8">
               {navItems.map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className="text-gray-700 dark:text-gray-300 hover:text-emerald-500 dark:hover:text-emerald-400 font-medium transition-colors duration-200"
+                <button
+                  key={item.id}
+                  onClick={() => scrollToSection(item.id)}
+                  className={`font-medium transition-colors duration-200 relative ${
+                    activeSection === item.id
+                      ? "text-emerald-500 dark:text-emerald-400"
+                      : "text-gray-700 dark:text-gray-300 hover:text-emerald-500 dark:hover:text-emerald-400"
+                  }`}
                 >
                   {item.label}
-                </Link>
+                  {activeSection === item.id && (
+                    <span className="absolute -bottom-[21px] left-0 right-0 h-0.5 bg-emerald-500 dark:bg-emerald-400"></span>
+                  )}
+                </button>
               ))}
             </div>
 
@@ -61,7 +113,7 @@ const Navigation: React.FC<NavigationProps> = ({
 
               <button
                 type="button"
-                onClick={() => {}}
+                onClick={onToggleContact}
                 className="hidden cursor-pointer md:inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md"
               >
                 Contact
@@ -108,6 +160,9 @@ const Navigation: React.FC<NavigationProps> = ({
           isDark={isDark}
           onToggleTheme={onToggleTheme}
           onListenLive={onListenLive}
+          activeSection={activeSection}
+          onNavigate={scrollToSection}
+          onToggleContact={onToggleContact}
         />
       </nav>
     </>

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import ThemeToggle from "./ThemeToggle";
 
 interface MobileMenuProps {
@@ -8,13 +7,17 @@ interface MobileMenuProps {
   isDark: boolean;
   onToggleTheme: () => void;
   onListenLive: () => void;
+  activeSection: string;
+  onNavigate: (sectionId: string) => void;
+  onToggleContact: () => void;
 }
 
 const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/schedule", label: "Schedule" },
-  { href: "/podcast", label: "Podcast" },
-  { href: "/about", label: "About" },
+  { id: "home", label: "Home" },
+  { id: "about", label: "About" },
+  { id: "schedule", label: "Schedule" },
+  { id: "podcasts", label: "Podcast" },
+  { id: "news", label: "News" },
 ];
 
 const MobileMenu: React.FC<MobileMenuProps> = ({
@@ -22,6 +25,9 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
   isDark,
   onToggleTheme,
   onListenLive,
+  activeSection,
+  onNavigate,
+  onToggleContact,
 }) => {
   if (!isOpen) return null;
 
@@ -32,30 +38,27 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
     >
       <div className="px-4 py-4 space-y-1">
         {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="block px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-emerald-500 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg font-medium transition-colors duration-200"
+          <button
+            key={item.id}
+            onClick={() => onNavigate(item.id)}
+            className={`w-full text-left block px-4 py-3 rounded-lg font-medium transition-colors duration-200 ${
+              activeSection === item.id
+                ? "text-emerald-500 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20"
+                : "text-gray-700 dark:text-gray-300 hover:text-emerald-500 dark:hover:text-emerald-400 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+            }`}
           >
             {item.label}
-          </Link>
+          </button>
         ))}
 
         {/* Mobile Actions */}
         <div className="pt-4 space-y-3 border-t border-gray-200 dark:border-gray-700">
           <button
             type="button"
-            onClick={() => {}}
+            onClick={onToggleContact}
             className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200"
           >
-            Contact
-          </button>
-
-          <button
-            type="button"
-            className="w-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200"
-          >
-            Contact
+            Contact Us
           </button>
 
           <div className="flex items-center justify-between pt-2">

@@ -1,28 +1,28 @@
 "use client";
 
+import ContactModal from "@/components/ContactModal";
+import LivePlayer from "@/components/LivePlayer";
 import Navigation from "@/components/Navigation";
+import UnifiedPlayer from "@/components/UnifiedPlayer";
+import { MediaProvider } from "@/context/MediaContext";
 import { useNowPlaying } from "@/hooks/useNowPlaying";
-
+import { useTheme } from "@/hooks/useTheme";
+import AboutSection from "@/sections/AboutSection";
 import Footer from "@/sections/Footer";
 import HeroSection from "@/sections/HeroSection";
-import ScheduleSection from "@/sections/ScheduleSection";
-import { Show } from "@/types";
-import { FC, useState } from "react";
-
-import LivePlayer from "@/components/LivePlayer";
-import ResponsivePlayer from "@/components/ResponsivePlayer";
-import { useTheme } from "@/hooks/useTheme";
 import LatestPodcasts from "@/sections/LatestPodcasts";
 import NewsUpdate from "@/sections/NewsUpdate";
+import ScheduleSection from "@/sections/ScheduleSection";
 import TeamSection from "@/sections/TeamSection";
+import { FC, useState } from "react";
 
-const Home: FC = () => {
+const STREAM_URL = "https://stream.zeno.fm/hnuqg3vbh41tv";
+const META_URL = "https://stream.zeno.fm/hnuqg3vbh41tv/metadata";
+
+const HomeContent: FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
   const { isDarkMode, toggleTheme } = useTheme();
-
-  const STREAM_URL = "https://stream.zeno.fm/hnuqg3vbh41tv";
-  const META_URL = "https://stream.zeno.fm/hnuqg3vbh41tv/metadata";
-
   const { nowPlaying, isLiveError } = useNowPlaying(META_URL);
 
   const onListenLive = () => {
@@ -32,16 +32,10 @@ const Home: FC = () => {
   };
 
   const toggleMenu = () => setMenuOpen((v) => !v);
-
-  // Data
-  const shows: Show[] = [
-    { time: "6:00 AM", title: "Morning Vibes", host: "DJ Dad" },
-    { time: "10:00 AM", title: "Midday Mix", host: "Auntie B" },
-    { time: "3:00 PM", title: "Afternoon Delight", host: "Uncle T" },
-  ];
+  const toggleContact = () => setContactOpen((v) => !v);
 
   return (
-    <div className="min-h-screen bg-gray-900 dark:bg-black  text-gray-900 dark:text-gray-100">
+    <div className="min-h-screen bg-gray-900 dark:bg-black text-gray-900 dark:text-gray-100">
       <header id="header">
         <Navigation
           isDark={isDarkMode}
@@ -49,31 +43,58 @@ const Home: FC = () => {
           onListenLive={onListenLive}
           menuOpen={menuOpen}
           onToggleMenu={toggleMenu}
+          onToggleContact={toggleContact}
         />
       </header>
 
       <main id="main">
-        <HeroSection onListenLive={onListenLive} />
+        <section id="home">
+          <HeroSection onListenLive={onListenLive} />
+          <LivePlayer
+            nowPlaying={nowPlaying}
+            isLiveError={isLiveError}
+            streamUrl={STREAM_URL}
+          />
+        </section>
 
-        <LivePlayer
-          nowPlaying={nowPlaying}
-          isLiveError={isLiveError}
-          streamUrl={STREAM_URL}
-        />
+        <section id="about">
+          <AboutSection />
+        </section>
 
-        <ScheduleSection shows={shows} />
+        <section id="schedule">
+          <ScheduleSection />
+        </section>
 
-        <LatestPodcasts />
+        <section id="podcasts">
+          <LatestPodcasts />
+        </section>
 
-        <TeamSection />
+        <section id="team">
+          <TeamSection />
+        </section>
 
-        <NewsUpdate />
+        <section id="news">
+          <NewsUpdate />
+        </section>
       </main>
 
-      <Footer />
+      <Footer onToggleContact={toggleContact} />
 
-      <ResponsivePlayer nowPlaying={nowPlaying} streamUrl={STREAM_URL} />
+      <UnifiedPlayer />
+
+      <ContactModal
+        isOpen={contactOpen}
+        onClose={() => setContactOpen(false)}
+      />
     </div>
+  );
+};
+
+const Home: FC = () => {
+  return (
+    <MediaProvider>
+      <HomeContent />
+    </MediaProvider>
   );
 };
 

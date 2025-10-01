@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useMedia } from "@/context/MediaContext";
 
 interface LivePlayerProps {
   nowPlaying: string;
@@ -13,82 +13,50 @@ const LivePlayer: React.FC<LivePlayerProps> = ({
   isLiveError,
   streamUrl,
 }) => {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
+  const {
+    play: playMedia,
+    pause,
+    currentMedia,
+    isPlaying,
+    isLoading,
+    volume,
+    setVolume,
+  } = useMedia();
 
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const updateTime = () => setCurrentTime(audio.currentTime);
-    const updateDuration = () => setDuration(audio.duration);
-    const handleLoadStart = () => setIsLoading(true);
-    const handleCanPlay = () => setIsLoading(false);
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-
-    audio.addEventListener("timeupdate", updateTime);
-    audio.addEventListener("loadedmetadata", updateDuration);
-    audio.addEventListener("loadstart", handleLoadStart);
-    audio.addEventListener("canplay", handleCanPlay);
-    audio.addEventListener("play", handlePlay);
-    audio.addEventListener("pause", handlePause);
-
-    return () => {
-      audio.removeEventListener("timeupdate", updateTime);
-      audio.removeEventListener("loadedmetadata", updateDuration);
-      audio.removeEventListener("loadstart", handleLoadStart);
-      audio.removeEventListener("canplay", handleCanPlay);
-      audio.removeEventListener("play", handlePlay);
-      audio.removeEventListener("pause", handlePause);
-    };
-  }, []);
-
-  const togglePlayPause = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (isPlaying) {
-      audio.pause();
+  const handleTogglePlayPause = () => {
+    if (isLivePlaying()) {
+      pause();
     } else {
-      audio.play();
+      playMedia({
+        type: "live",
+        title: nowPlaying || "GloriousTwins Radio",
+        url: streamUrl,
+      });
     }
   };
 
-  const formatTime = (time: number) => {
-    if (isNaN(time)) return "0:00";
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  const isLivePlaying = () => {
+    return currentMedia?.type === "live" && isPlaying;
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume;
-    }
   };
 
-  // Clean Play Icon Component
+  // Icon Components
   const PlayIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5">
       <path d="M8 5v14l11-7z" fill="currentColor" />
     </svg>
   );
 
-  // Clean Pause Icon Component
   const PauseIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5">
       <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" fill="currentColor" />
     </svg>
   );
 
-  // Clean Loading Icon Component
   const LoadingIcon = () => (
     <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 animate-spin">
       <circle
@@ -106,7 +74,7 @@ const LivePlayer: React.FC<LivePlayerProps> = ({
   );
 
   return (
-    <div className="max-w-lg mx-auto px-4 my-16 relative z-20">
+    <div className="max-w-lg mx-auto px-4 my-16 relative z-20" id="live-player">
       {/* Main Player Card */}
       <div className="bg-white dark:bg-gray-900/95 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-600/30">
         {/* Header */}
@@ -128,9 +96,7 @@ const LivePlayer: React.FC<LivePlayerProps> = ({
                 Now Playing:
               </h3>
               <p className="text-gray-600 dark:text-gray-300 text-sm truncate">
-                {(nowPlaying && nowPlaying) || nowPlaying === "-"
-                  ? "GloriousTwins Radio"
-                  : "GloriousTwins Radio"}
+                {nowPlaying || "GloriousTwins Radio"}
               </p>
             </div>
           </div>
@@ -138,40 +104,14 @@ const LivePlayer: React.FC<LivePlayerProps> = ({
 
         {/* Custom Audio Controls */}
         <div className="px-6 py-4">
-          {/* Progress Bar */}
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-mono min-w-[40px]">
-              {formatTime(currentTime)}
-            </span>
-
-            <div className="flex-1 h-1 bg-gray-300 dark:bg-gray-700 rounded-full relative group cursor-pointer hover:bg-gray-400 dark:hover:bg-gray-600 transition-colors duration-200">
-              <div
-                className="h-full bg-gray-900 dark:bg-white rounded-full transition-all duration-200 group-hover:bg-gray-800 dark:group-hover:bg-gray-100"
-                style={{
-                  width: duration ? `${(currentTime / duration) * 100}%` : "0%",
-                }}
-              />
-              <div
-                className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-gray-900 dark:bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                style={{
-                  left: duration ? `${(currentTime / duration) * 100}%` : "0%",
-                }}
-              />
-            </div>
-
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-mono min-w-[40px]">
-              {formatTime(0)}
-            </span>
-          </div>
-
           {/* Controls */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              {/* Clean Play/Pause Button */}
+              {/* Play/Pause Button */}
               <button
                 type="button"
-                onClick={togglePlayPause}
-                disabled={isLoading}
+                onClick={handleTogglePlayPause}
+                disabled={isLoading && currentMedia?.type === "live"}
                 className={`
                   flex cursor-pointer items-center justify-center
                   w-10 h-10 rounded-full
@@ -181,9 +121,9 @@ const LivePlayer: React.FC<LivePlayerProps> = ({
                   bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-300
                 `}
               >
-                {isLoading ? (
+                {isLoading && currentMedia?.type === "live" ? (
                   <LoadingIcon />
-                ) : isPlaying ? (
+                ) : isLivePlaying() ? (
                   <PauseIcon />
                 ) : (
                   <PlayIcon />
@@ -246,9 +186,6 @@ const LivePlayer: React.FC<LivePlayerProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Hidden HTML5 Audio Element */}
-      <audio ref={audioRef} src={streamUrl} preload="none" className="hidden" />
 
       {/* Error Message */}
       {isLiveError && (

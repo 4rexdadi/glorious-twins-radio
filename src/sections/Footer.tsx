@@ -6,19 +6,13 @@ interface SocialLink {
   icon: string;
 }
 
-interface FooterProps {}
+interface FooterProps {
+  onToggleContact?: () => void;
+}
 
 // Footer Component
-const Footer: React.FC<FooterProps> = () => {
+const Footer: React.FC<FooterProps> = ({ onToggleContact }) => {
   const year = useMemo(() => new Date().getFullYear(), []);
-
-  const quickLinks = [
-    "About Us",
-    "Privacy Policy",
-    "Team of Professionals",
-    "Contact",
-    "Download our APP",
-  ];
 
   // Default social links if none provided
   const defaultSocialLinks: SocialLink[] = [
@@ -29,6 +23,31 @@ const Footer: React.FC<FooterProps> = () => {
   ];
 
   const displaySocialLinks = defaultSocialLinks;
+
+  const quickLinks = [
+    { label: "About Us", action: "scroll", target: "about" },
+    { label: "Privacy Policy", action: "navigate", target: "/privacy" },
+    { label: "Team of Professionals", action: "scroll", target: "team" },
+    { label: "Contact", action: "modal", target: "" },
+    { label: "Download our APP", action: "scroll", target: "home" },
+  ];
+
+  const handleQuickLinkClick = (
+    action: string,
+    target: string,
+    event: React.MouseEvent
+  ) => {
+    event.preventDefault();
+
+    if (action === "navigate") {
+      window.location.href = target;
+    } else if (action === "modal") {
+      onToggleContact?.();
+    } else if (action === "scroll") {
+      const section = document.getElementById(target);
+      section?.scrollIntoView({ behavior: "smooth" });
+    }
+  };
 
   return (
     <footer className="">
@@ -106,14 +125,16 @@ const Footer: React.FC<FooterProps> = () => {
               </h3>
               <ul className="space-y-3">
                 {quickLinks.map((item) => (
-                  <li key={item}>
-                    <a
-                      href="#"
-                      className="text-gray-300 hover:text-emerald-400 transition-colors duration-200 cursor-pointer flex items-center group"
+                  <li key={item.label}>
+                    <button
+                      onClick={(e) =>
+                        handleQuickLinkClick(item.action, item.target, e)
+                      }
+                      className="text-gray-300 hover:text-emerald-400 transition-colors duration-200 cursor-pointer flex items-center group w-full text-left"
                     >
                       <span className="w-1 h-1 bg-emerald-400 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></span>
-                      {item}
-                    </a>
+                      {item.label}
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -158,17 +179,10 @@ const Footer: React.FC<FooterProps> = () => {
             </p>
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <a
-                href="#"
+                href="/privacy"
                 className="hover:text-emerald-400 transition-colors cursor-pointer"
               >
                 Privacy Policy
-              </a>
-              <span>•</span>
-              <a
-                href="#"
-                className="hover:text-emerald-400 transition-colors cursor-pointer"
-              >
-                Terms of Service
               </a>
             </div>
           </div>
