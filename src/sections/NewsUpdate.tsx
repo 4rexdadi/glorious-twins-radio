@@ -11,16 +11,25 @@ const NewsUpdate: React.FC<NewsUpdateProps> = ({ limit = 4 }) => {
   const [newsItems, setNewsItems] = useState<News[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const itemsPerPage = 4;
 
-  const fetchNews = async () => {
+  const fetchNews = async (page: number = 1) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await newsService.getLatestNews(limit);
+      const offset = (page - 1) * itemsPerPage;
+      const response = await newsService.getNews({
+        limit: itemsPerPage,
+        offset,
+        published: true,
+      });
 
-      // Filter published news
-      const publishedNews = response.news.filter((n) => n.published);
-      setNewsItems(publishedNews);
+      setNewsItems(response.news);
+      setTotalCount(response.total);
+      setHasMore(response.hasMore);
     } catch (err) {
       setError("Failed to load news. Please try again.");
       console.error("Error fetching news:", err);
@@ -30,11 +39,12 @@ const NewsUpdate: React.FC<NewsUpdateProps> = ({ limit = 4 }) => {
   };
 
   useEffect(() => {
-    fetchNews();
-  }, [limit]);
+    fetchNews(currentPage);
+  }, [currentPage]);
+
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   const handleReadMore = (newsId: string) => {
-    // Navigate to news detail page or open modal
     window.location.href = `/news/${newsId}`;
   };
 
@@ -57,7 +67,6 @@ const NewsUpdate: React.FC<NewsUpdateProps> = ({ limit = 4 }) => {
     return `${minutes} min read`;
   };
 
-  // Loading State
   if (loading) {
     return (
       <div className="py-16">
@@ -88,7 +97,6 @@ const NewsUpdate: React.FC<NewsUpdateProps> = ({ limit = 4 }) => {
     );
   }
 
-  // Error State
   if (error) {
     return (
       <div className="py-16">
@@ -117,7 +125,7 @@ const NewsUpdate: React.FC<NewsUpdateProps> = ({ limit = 4 }) => {
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
             <button
-              onClick={fetchNews}
+              onClick={() => fetchNews(currentPage)}
               className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200 flex items-center justify-center gap-2 mx-auto"
             >
               <svg
@@ -141,7 +149,6 @@ const NewsUpdate: React.FC<NewsUpdateProps> = ({ limit = 4 }) => {
     );
   }
 
-  // Empty State
   if (newsItems.length === 0) {
     return (
       <div className="py-16">
@@ -177,7 +184,6 @@ const NewsUpdate: React.FC<NewsUpdateProps> = ({ limit = 4 }) => {
     );
   }
 
-  // Success State with Data
   return (
     <div className="py-16">
       <div className="max-w-6xl mx-auto px-4">
@@ -185,15 +191,13 @@ const NewsUpdate: React.FC<NewsUpdateProps> = ({ limit = 4 }) => {
           News Update
         </h2>
 
-        {/* News Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {newsItems.map((news) => (
             <div
               key={news.id}
               className="group bg-white dark:bg-gray-900/95 backdrop-blur-xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700/50 transition-all duration-300 hover:border-gray-300 dark:hover:border-gray-600/50"
             >
               <div className="flex gap-4 p-4">
-                {/* News Image */}
                 <div className="w-24 h-24 md:w-32 md:h-32 flex-shrink-0 overflow-hidden rounded-xl relative">
                   {news.imageUrl ? (
                     <Image
@@ -221,9 +225,7 @@ const NewsUpdate: React.FC<NewsUpdateProps> = ({ limit = 4 }) => {
                   )}
                 </div>
 
-                {/* Content */}
                 <div className="flex-1 min-w-0">
-                  {/* Date and Category */}
                   <div className="flex items-center gap-3 mb-2 flex-wrap">
                     <div className="flex items-center text-gray-500 dark:text-gray-500 text-xs">
                       <svg
@@ -246,17 +248,14 @@ const NewsUpdate: React.FC<NewsUpdateProps> = ({ limit = 4 }) => {
                     )}
                   </div>
 
-                  {/* Title */}
                   <h3 className="text-sm md:text-base font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                     {news.title}
                   </h3>
 
-                  {/* Description */}
                   <p className="text-gray-600 dark:text-gray-400 text-xs md:text-sm mb-3 line-clamp-2">
                     {news.description}
                   </p>
 
-                  {/* Read Time and Views */}
                   <div className="flex items-center gap-3 mb-2 text-xs text-gray-500 dark:text-gray-500">
                     <span>{estimateReadTime(news.content)}</span>
                     <span>•</span>
@@ -277,7 +276,6 @@ const NewsUpdate: React.FC<NewsUpdateProps> = ({ limit = 4 }) => {
                     </span>
                   </div>
 
-                  {/* Read More Button */}
                   <button
                     onClick={() => handleReadMore(news.id)}
                     className="inline-flex items-center text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 text-xs font-medium transition-colors duration-200 cursor-pointer"
@@ -300,6 +298,95 @@ const NewsUpdate: React.FC<NewsUpdateProps> = ({ limit = 4 }) => {
             </div>
           ))}
         </div>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-gray-900 dark:text-white rounded-lg transition-colors duration-200 cursor-pointer"
+            >
+              Previous
+            </button>
+
+            <div className="flex gap-1">
+              {totalPages <= 5 ? (
+                Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-8 h-8 rounded-lg transition-all duration-200 cursor-pointer ${
+                        currentPage === page
+                          ? "bg-emerald-500 text-white"
+                          : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-300"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                )
+              ) : (
+                <>
+                  {[1, 2].map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-8 h-8 rounded-lg transition-all duration-200 cursor-pointer ${
+                        currentPage === page
+                          ? "bg-emerald-500 text-white"
+                          : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-300"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  {currentPage > 3 && (
+                    <span className="flex items-center text-gray-600 dark:text-gray-400">
+                      ...
+                    </span>
+                  )}
+                  {currentPage > 2 && currentPage < totalPages - 1 && (
+                    <button
+                      onClick={() => setCurrentPage(currentPage)}
+                      className="w-8 h-8 rounded-lg bg-emerald-500 text-white"
+                    >
+                      {currentPage}
+                    </button>
+                  )}
+                  {currentPage < totalPages - 2 && (
+                    <span className="flex items-center text-gray-600 dark:text-gray-400">
+                      ...
+                    </span>
+                  )}
+                  {[totalPages - 1, totalPages].map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-8 h-8 rounded-lg transition-all duration-200 cursor-pointer ${
+                        currentPage === page
+                          ? "bg-emerald-500 text-white"
+                          : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-300"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+
+            <button
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors duration-200 cursor-pointer"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

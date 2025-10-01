@@ -1,6 +1,6 @@
 import programService from "@/services/programService";
 import { Program } from "@/types";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 interface ScheduleSectionProps {}
 
@@ -14,7 +14,6 @@ const toInitials = (name: string) =>
     .toUpperCase();
 
 const formatTime = (time: string) => {
-  // Assumes time is in HH:MM format, converts to 12-hour format
   const [hours, minutes] = time.split(":");
   const hour = parseInt(hours, 10);
   const ampm = hour >= 12 ? "PM" : "AM";
@@ -26,18 +25,19 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = () => {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   const fetchPrograms = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await programService.getFeaturedPrograms();
+      const data = await programService.getPrograms({});
 
-      // Filter active programs and sort by start time
       const activePrograms = data
         .filter((p) => p.active)
-        .sort((a, b) => a.startTime.localeCompare(b.startTime))
-        .slice(0, 3); // Show top 3 programs
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
       setPrograms(activePrograms);
     } catch (err) {
@@ -52,19 +52,48 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = () => {
     fetchPrograms();
   }, []);
 
-  // Loading State
+  useEffect(() => {
+    checkScrollButtons();
+  }, [programs]);
+
+  const checkScrollButtons = () => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } =
+        scrollContainerRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+    }
+  };
+
+  const scroll = (direction: "left" | "right") => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 400;
+      const newScrollLeft =
+        direction === "left"
+          ? scrollContainerRef.current.scrollLeft - scrollAmount
+          : scrollContainerRef.current.scrollLeft + scrollAmount;
+
+      scrollContainerRef.current.scrollTo({
+        left: newScrollLeft,
+        behavior: "smooth",
+      });
+
+      setTimeout(checkScrollButtons, 300);
+    }
+  };
+
   if (loading) {
     return (
       <div className="py-16">
-        <div className="max-w-6xl mx-auto px-4">
+        <div className="max-w-7xl mx-auto px-4">
           <h2 className="text-2xl font-bold text-center mb-12 text-black dark:text-white">
             Program Schedule
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-            {[1, 2, 3].map((i) => (
+          <div className="flex gap-4 overflow-hidden">
+            {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="rounded-2xl bg-white dark:bg-gray-900/95 backdrop-blur-xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-600/30 p-6 animate-pulse"
+                className="flex-shrink-0 w-80 rounded-2xl bg-white dark:bg-gray-900/95 backdrop-blur-xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-600/30 p-6 animate-pulse"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
@@ -83,7 +112,6 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = () => {
     );
   }
 
-  // Error State
   if (error) {
     return (
       <div className="py-16">
@@ -136,7 +164,6 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = () => {
     );
   }
 
-  // Empty State
   if (programs.length === 0) {
     return (
       <div className="py-16">
@@ -172,23 +199,72 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = () => {
     );
   }
 
-  // Success State with Data
   return (
     <div className="py-16">
-      <div className="max-w-6xl mx-auto px-4">
-        <h2 className="text-2xl font-bold text-center mb-12 text-black dark:text-white">
-          Program Schedule
-        </h2>
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex items-center justify-between mb-12">
+          <h2 className="text-2xl font-bold text-black dark:text-white">
+            Program Schedule
+          </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+          {programs.length > 3 && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => scroll("left")}
+                disabled={!canScrollLeft}
+                className="p-2 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+                aria-label="Scroll left"
+              >
+                <svg
+                  className="w-5 h-5 text-gray-700 dark:text-gray-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+              </button>
+              <button
+                onClick={() => scroll("right")}
+                disabled={!canScrollRight}
+                className="p-2 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+                aria-label="Scroll right"
+              >
+                <svg
+                  className="w-5 h-5 text-gray-700 dark:text-gray-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div
+          ref={scrollContainerRef}
+          onScroll={checkScrollButtons}
+          className="flex gap-6 overflow-x-auto scrollbar-hide pb-4 snap-x snap-mandatory"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
           {programs.map((program) => (
             <div
               key={program.id}
-              className="group rounded-2xl transition-all duration-300 bg-white dark:bg-gray-900/95 backdrop-blur-xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-600/30"
+              className="group flex-shrink-0 w-80 snap-start rounded-2xl transition-all duration-300 bg-white dark:bg-gray-900/95 backdrop-blur-xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-600/30 hover:shadow-emerald-500/20 hover:border-emerald-500/50"
             >
-              {/* Card Content */}
               <div className="p-6">
-                {/* Header with Time Badge and Avatar */}
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 mb-3">
@@ -208,20 +284,17 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = () => {
                     )}
                   </div>
 
-                  {/* Host Avatar */}
                   <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center text-white text-sm font-bold shadow-lg ring-2 ring-emerald-500/30">
                     {toInitials(program.host)}
                   </div>
                 </div>
 
-                {/* Description if available */}
                 {program.description && (
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
                     {program.description}
                   </p>
                 )}
 
-                {/* Action Button */}
                 <button
                   type="button"
                   className="w-full cursor-pointer mt-4 bg-gray-100 dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-600/50 border border-gray-300 dark:border-gray-600/30 hover:border-gray-400 dark:hover:border-gray-500/50 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 group/btn"

@@ -13,18 +13,26 @@ const LatestPodcasts: React.FC<LatestPodcastsProps> = ({ limit = 6 }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 3;
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const itemsPerPage = 6;
 
   const { play: playMedia, currentMedia, isPlaying } = useMedia();
 
-  const fetchPodcasts = async () => {
+  const fetchPodcasts = async (page: number = 1) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await podcastService.getLatestPodcasts(limit);
+      const offset = (page - 1) * itemsPerPage;
+      const response = await podcastService.getPodcasts({
+        limit: itemsPerPage,
+        offset,
+        published: true,
+      });
 
-      const publishedPodcasts = response.podcasts.filter((p) => p.published);
-      setPodcasts(publishedPodcasts);
+      setPodcasts(response.podcasts);
+      setTotalCount(response.total);
+      setHasMore(response.hasMore);
     } catch (err) {
       setError("Failed to load podcasts. Please try again.");
       console.error("Error fetching podcasts:", err);
@@ -34,12 +42,10 @@ const LatestPodcasts: React.FC<LatestPodcastsProps> = ({ limit = 6 }) => {
   };
 
   useEffect(() => {
-    fetchPodcasts();
-  }, [limit]);
+    fetchPodcasts(currentPage);
+  }, [currentPage]);
 
-  const totalPages = Math.ceil(podcasts.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentPodcasts = podcasts.slice(startIndex, startIndex + itemsPerPage);
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   const handlePlayPodcast = async (podcast: Podcast) => {
     if (!podcast.audioUrl) {
@@ -138,7 +144,7 @@ const LatestPodcasts: React.FC<LatestPodcastsProps> = ({ limit = 6 }) => {
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
             <button
-              onClick={fetchPodcasts}
+              onClick={() => fetchPodcasts(currentPage)}
               className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200 flex items-center justify-center gap-2 mx-auto"
             >
               <svg
@@ -205,7 +211,7 @@ const LatestPodcasts: React.FC<LatestPodcastsProps> = ({ limit = 6 }) => {
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {currentPodcasts.map((podcast) => (
+          {podcasts.map((podcast) => (
             <div
               key={podcast.id}
               className="group bg-white dark:bg-gray-900/95 backdrop-blur-xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-600/30 rounded-2xl hover:border-gray-300 dark:hover:border-gray-600/50 transition-all duration-300"
