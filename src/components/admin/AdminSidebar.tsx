@@ -10,8 +10,9 @@ import {
   Radio,
   User,
 } from "lucide-react";
+import { signOut } from "next-auth/react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 const menuItems = [
@@ -30,6 +31,12 @@ interface AdminSidebarProps {
 
 const AdminSidebar = ({ isOpen, onClose }: AdminSidebarProps) => {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut({ redirect: false });
+    router.push("/login");
+  };
 
   // Close sidebar when route changes (mobile)
   useEffect(() => {
@@ -105,7 +112,10 @@ const AdminSidebar = ({ isOpen, onClose }: AdminSidebarProps) => {
 
         {/* Logout */}
         <div className="p-3 lg:p-4 border-t border-green-800">
-          <button className="flex items-center gap-3 px-3 lg:px-4 py-3 rounded-lg w-full hover:bg-green-800 text-green-100 transition-all">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-3 lg:px-4 py-3 rounded-lg w-full hover:bg-green-800 text-green-100 transition-all"
+          >
             <LogOut className="w-5 h-5" />
             <span className="font-medium">Logout</span>
           </button>

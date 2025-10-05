@@ -126,7 +126,3 @@ button,
 a {
   cursor: pointer;
 }
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
